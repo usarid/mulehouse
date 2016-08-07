@@ -61,6 +61,8 @@ var mulesoftRatings = [ '1', '2', '4', '5' ]; // no 3's!
 
 var modifierPersistentContainerId = 'scorecard_notes';
 
+// Change overall rating to 1 2- 2 2+ 4- 4 4+ 5
+
 function getMuleSoftOverallRecommendationValue(candidateValue)
 {
 	var match;
@@ -142,6 +144,8 @@ function onOverallRecommendationClick(evt)
 	selectMulesoftRating(parseMuleSoftOverallRecommendationValue(ratingValue));
 }
 
+// End of Change overall rating 
+
 function lookupNotesTitle(text)
 {
 	var matches = /^\s*\d+/.exec(text);
@@ -199,7 +203,7 @@ function redrawOnce()
 		overrideClass('.notes .tips', 'position: relative');
 		var publicNotesLinkContainer = containerModifier.getElementsByClassName('new-note-links-container')[0];
 		newTopNote.appendChild(publicNotesLinkContainer);
-		containerModifier.style.display = 'none';
+		//containerModifier.style.display = 'none';
 
 		if (/^Interview Kit\: Reference/.test(document.title) ||
 		    /^Interview Kit\: Backchannel/.test(document.title)) // not scorable
@@ -296,6 +300,7 @@ function appendTest(value)
 	);
 }
 
+// Things that need redrawing potentially multiple times
 function redraw()
 {
 	// Scorecard criteria ratings picture-buttons
@@ -308,7 +313,7 @@ function redraw()
 	{
 		elt.childNodes[2].textContent = ''
 	});
-	getSummaries();
+	adjustSummaries();
 }
 
 needSummaries = true;
@@ -330,21 +335,6 @@ window.onload = function ()
 			});
 		}
 	}
-}
-
-///////
-// Load scorecards for summarization
-
-function getScorecardSummary(iScorecard, scorecardUrl, onLoad)
-{
-	var xhr = new XMLHttpRequest();
-	xhr.onload = function() 
-	{
-	  onLoad(iScorecard, this.responseXML);
-	}
-	xhr.open('GET', scorecardUrl);
-	xhr.responseType = 'document';
-	xhr.send();
 }
 
 function warnNonPluginOverallScores()
@@ -369,31 +359,58 @@ function warnPluginDiscrepancyOverallScores()
 	warningNote.innerHTML = '<super style="color: red; font-weight: bold">**</super> This score wasn\'t saved properly by the MuleHouse Chrome plugin. Please email this URL to Uri!';
 }
 
-function getSummaries()
+function adjustSummaries()
 {
 	if (!needSummaries) return;
-	var scorecardSections = Array.from(document.querySelectorAll('.scorecards-section h4'));
-	iScorecardSection = scorecardSections.findIndex(function (h4) { return /Scorecard Summary/.test(h4.innerText)});
-	if (iScorecardSection < 0) return;                // No scorecard section
-	needSummaries = false; // won't fire again since data will have already been loaded
-	var links = Array.from(document.querySelectorAll('table#scorecards td.name a'));
-	var scorecards = links.map(function (link, iLink) 
-	{ 
-		return { i: iLink, reviewer: link.innerText, url: link.href, html: '', link: link } 
-	});
-	var lastNode = scorecardSections[iScorecardSection];
-	scorecards.forEach(function (scorecard) 
-	{ 
-		var summaryContainer = document.createElement('div');
-		summaryContainer.id = 'summary_' + scorecard.i;
-		var isLast = (scorecard.i == scorecards.length - 1);
-		insertAfter(summaryContainer, lastNode);
-		lastNode = summaryContainer;
-		getScorecardSummary(scorecard.i, scorecard.url, function (i, doc)
+	var overallRecommendationSections = Array.from(document.querySelectorAll('.scorecard-section.overall-recommendations #scorecards tr.recommendation'));
+	var overallQuestionAnswerSections = Array.from(document.querySelectorAll('.scorecard-section.overall-recommendations #scorecards tr.question-answers'));
+	if (overallRecommendationSections.length) needSummaries = false; // No need to do this more than once
+	for (var iPair = 0; iPair < overallRecommendationSections.length; iPair++)
+	{
+		var recSection = overallRecommendationSections[iPair];
+		var qaSection  = overallQuestionAnswerSections[iPair];
+		var ratingElt = recSection.querySelector('.rating-with-name');
+		if (!ratingElt) continue;
+		var mulesoftOverallRating = convertQuestionAnswerSection(qaSection);
+		var ratingValue = parseInt(ratingElt.getAttribute('data-rating-id'));
+		var mulesoftNumericRating = mulesoftRatings[ratingValue - 1];
+		if (mulesoftNumericRating)
 		{
-			wrapScorecardHTML(document.getElementById('summary_' + i), scorecard.reviewer, doc, scorecard.link, isLast);
-		})
+			if (mulesoftOverallRating)
+			{
+				if (mulesoftOverallRating.numeric == mulesoftNumericRating)
+				{
+					ratingElt.innerHTML = mulesoftOverallRating.value;
+				}
+				else
+				{
+					ratingElt.innerHTML = mulesoftNumericRating + ' <super style="color: red">**</super>';
+					warnPluginDiscrepancyOverallScores();
+				}
+			}
+			else
+			{
+				ratingElt.innerHTML = mulesoftNumericRating + ' <super style="color: orange">*</super>';
+				warnNonPluginOverallScores();
+			}
+		}
+	}
+}
+
+// Look for <dt>...</dt><dd>...</dd> where the <dd>...</dd> part looks like a MuleSoft overall rating value (e.g. ::4+::)
+function convertQuestionAnswerSection(qaSection)
+{
+	var elts = Array.from(qaSection.querySelectorAll('dt, dd'));
+	var mulesoftOverallRatingValue = null;
+	elts.every(function (elt, iElt)
+	{
+		mulesoftOverallRatingValue = getMuleSoftOverallRecommendationValue(elt.innerText);
+		if (!mulesoftOverallRatingValue) return true; // try again
+		elt.style.display = 'none';
+		if (elts[iElt - 1]) elts[iElt - 1].style.display = 'none'; // Hide the "Key Takeway" label too
+		return false;
 	});
+	return mulesoftOverallRatingValue; // Didn't find the parsed value from a MuleHouse-submitted scorecard
 }
 
 function convertScorecardHTML(notesContainer)
