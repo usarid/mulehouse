@@ -140,13 +140,6 @@ function onOverallRecommendationClick(evt)
 {
 	var ratingValue = evt.srcElement.getAttribute('mulesoft-rating-id');
 	selectMulesoftRating(parseMuleSoftOverallRecommendationValue(ratingValue));
-;}
-
-function overrideClass(selector, overrideText)
-{
-	var style = document.createElement('style');
-	style.textContent = selector + ' {' + overrideText + '}';
-	document.head.appendChild(style);
 }
 
 function lookupNotesTitle(text)
@@ -291,74 +284,6 @@ function redrawOnce()
 	// No PDF export (but note this doesn't cover all cases):
 	overrideClass('.export-as-pdf', 'display: none');
 }
-
-function insertAfter(newNode, afterThisNode) 
-{
-    afterThisNode.parentNode.insertBefore(newNode, afterThisNode.nextSibling);
-}
-
-function hasSelector(selector)
-{
-	var matches = document.querySelectorAll(selector);
-	return matches.length > 0;
-}
-
-function doOnClass(className, onClass)
-{
-	var matches = document.getElementsByClassName(className);
-	if (matches.length == 0) return;
-	onClass(matches[0]);	
-}
-function doOnSelector(selector, onSelector)
-{
-	var matches = document.querySelectorAll(selector);
-	Array.from(matches).forEach(onSelector);
-}
-function doOnFirstSelector(selector, onSelector)
-{
-	var matched = document.querySelector(selector);
-	if (matched) onSelector(matched);
-}
-function setClassHTML(className, value) 
-{ 
-	doOnClass(className, function (elt)
-	{
-		elt.innerHTML = value;
-	});
-};
-function setSelectorHTML(selector, value) 
-{ 
-	doOnSelector(selector, function (elt)
-	{
-		elt.innerHTML = value;
-	});
-};
-function appendFirstSelectorHTML(selector, value) 
-{ 
-	doOnFirstSelector(selector, function (elt)
-	{
-		elt.innerHTML = elt.innerHTML + value;
-	});
-};
-function setSelectorTitle(selector, value) 
-{ 
-	doOnSelector(selector, function (elt)
-	{
-		elt.title = value;
-	});
-};
-function setSelectorAppendTitleHTML(selector, titleValue, appendTest, htmlValue) 
-{ 
-	doOnSelector(selector, function (elt)
-	{
-		if (!elt.hasAttribute('data-orig-title')) elt.setAttribute('data-orig-title', elt.title);
-		var origTitle = elt.getAttribute('data-orig-title');
-		elt.title = (elt.hasAttribute('data-orig-title') && origTitle && !appendTest(origTitle)) ?
-			elt.getAttribute('data-orig-title') + ": " + titleValue :
-			titleValue;
-		elt.innerHTML = htmlValue;
-	});
-};
 
 function appendTest(value)
 {
@@ -532,4 +457,90 @@ function wrapScorecardHTML(container, reviewerName, doc, link, isLast)
 	{
 		container.appendChild(document.createElement('hr'));
 	}
+}
+
+//////////////////
+// HTML Helpers //
+//////////////////
+
+function overrideClass(selector, overrideText)
+{
+	var style = document.createElement('style');
+	style.textContent = selector + ' {' + overrideText + '}';
+	document.head.appendChild(style);
+}
+
+function insertAfter(newNode, afterThisNode) 
+{
+    afterThisNode.parentNode.insertBefore(newNode, afterThisNode.nextSibling);
+}
+
+function hasSelector(selector)
+{
+	var matches = document.querySelectorAll(selector);
+	return matches.length > 0;
+}
+
+function doOnClass(className, onClass)
+{
+	var matches = document.getElementsByClassName(className);
+	if (matches.length == 0) return;
+	onClass(matches[0]);	
+}
+
+function doOnSelector(selector, onSelector)
+{
+	var matches = document.querySelectorAll(selector);
+	Array.from(matches).forEach(onSelector);
+}
+
+function doOnFirstSelector(selector, onSelector)
+{
+	var matched = document.querySelector(selector);
+	if (matched) onSelector(matched);
+}
+
+function setClassHTML(className, value) 
+{ 
+	doOnClass(className, function (elt)
+	{
+		elt.innerHTML = value;
+	});
+}
+
+function setSelectorHTML(selector, value) 
+{ 
+	doOnSelector(selector, function (elt)
+	{
+		elt.innerHTML = value;
+	});
+}
+
+function appendFirstSelectorHTML(selector, value) 
+{ 
+	doOnFirstSelector(selector, function (elt)
+	{
+		elt.innerHTML = elt.innerHTML + value;
+	});
+}
+
+function setSelectorTitle(selector, value) 
+{ 
+	doOnSelector(selector, function (elt)
+	{
+		elt.title = value;
+	});
+}
+
+function setSelectorAppendTitleHTML(selector, titleValue, appendTest, htmlValue) 
+{ 
+	doOnSelector(selector, function (elt)
+	{
+		if (!elt.hasAttribute('data-orig-title')) elt.setAttribute('data-orig-title', elt.title);
+		var origTitle = elt.getAttribute('data-orig-title');
+		elt.title = (elt.hasAttribute('data-orig-title') && origTitle && !appendTest(origTitle)) ?
+			elt.getAttribute('data-orig-title') + ": " + titleValue :
+			titleValue;
+		elt.innerHTML = htmlValue;
+	});
 }
