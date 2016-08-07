@@ -203,7 +203,7 @@ function redrawOnce()
 		overrideClass('.notes .tips', 'position: relative');
 		var publicNotesLinkContainer = containerModifier.getElementsByClassName('new-note-links-container')[0];
 		newTopNote.appendChild(publicNotesLinkContainer);
-		//containerModifier.style.display = 'none';
+		containerModifier.style.display = 'none';
 
 		if (/^Interview Kit\: Reference/.test(document.title) ||
 		    /^Interview Kit\: Backchannel/.test(document.title)) // not scorable
@@ -286,7 +286,7 @@ function redrawOnce()
 	overrideClass('.no-decision.rating-icon.rating-with-name.selected', 'visibility: hidden');
 
 	// No PDF export (but note this doesn't cover all cases):
-	overrideClass('.export-as-pdf', 'display: none');
+	overrideClass('#export_pdf_button', 'display: none');
 }
 
 function appendTest(value)
