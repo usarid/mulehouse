@@ -1,6 +1,14 @@
-var extensionId = chrome.runtime.id;  //'jbjdbhbofcfmeenfjigdbbnklohgoiia';
+// Constants:
 
-var scorecardColumnsHTML = `
+var extensionId = chrome.runtime.id;
+var modifierPersistentContainerId = 'scorecard_notes';
+var pluginPattern = '::Used with MuleHouse Chrome Plugin::';
+var moveQuestionDownPattern = '::v::';
+var mulesoftOverallRatings = [ 'Definitely not', 'Not excited', 'Yes', 'Hire ASAP' ];
+
+// Add rotated labels to the columns of numbers showing the detailed ratings:
+
+var scorecardColumnLabelsHTML = `
 <div style="padding-left: 260px;">
     
 	<style>
@@ -32,226 +40,41 @@ var scorecardColumnsHTML = `
 </div>
 `;
 
-var scorecardInputOverallRecomendationHTML = `
-<li mulesoft-rating-id="1" >1 </li>
-<li mulesoft-rating-id="2-">2-</li>
-<li mulesoft-rating-id="2" >2 </li>
-<li mulesoft-rating-id="2+">2+</li>
-<li mulesoft-rating-id="4-">4-</li>
-<li mulesoft-rating-id="4" >4 </li>
-<li mulesoft-rating-id="4+">4+</li>
-<li mulesoft-rating-id="5" >5 </li>
-`;
-
-var scorecardExplainOverallRecommendationHTML = `
-<style>
-	.rating-legend-container { padding-left: 25px; padding-top: 10px }
-	.rating-legend-item {}
-	.rating-legend-number { font-weight: bold }
-</style>
-<div class="rating-legend-container">
-	<div class="rating-legend-item"><span class="rating-legend-number">1</span> - I oppose hiring</div>
-	<div class="rating-legend-item"><span class="rating-legend-number">2</span>  - I have some concerns hiring</div>
-	<div class="rating-legend-item"><span class="rating-legend-number">4</span>  - I support hiring</div>
-	<div class="rating-legend-item"><span class="rating-legend-number">5</span>  - Hire ASAP</div>
-</div>
-`;
-
-var mulesoftRatings = [ '1', '2', '4', '5' ]; // no 3's!
-
-var modifierPersistentContainerId = 'scorecard_notes';
-
-// Change overall rating to 1 2- 2 2+ 4- 4 4+ 5
-
-function getMuleSoftOverallRecommendationValue(candidateValue)
+function addScorecardColumnLabels()
 {
-	var match;
-	if (typeof candidateValue != 'string') 
-	{
-		candidateValue = document.getElementById(modifierPersistentContainerId).value;
+	appendFirstSelectorHTML('.scorecard-attributes-section > .title', scorecardColumnLabelsHTML);
+}
+
+// Take care of KEY TAKEAWAYS:
+
+function handleKeyTakeawaysCreation(keyTakeawaysContainer)
+{
+	var contentsContainer = keyTakeawaysContainer.querySelector('textarea');
+	var contents = contentsContainer.value.trim();
+	if ((contents.length > 0) && (contents != pluginPattern)) {
+		return; // Don't touch user's text; instead, indicate this was not used with the plugin
 	}
-	match = /^\s*\:\:(.*)\:\:\s*$/.exec(candidateValue);
-	if (!match) return null;
-	candidateValue = match[1];
-	return parseMuleSoftOverallRecommendationValue(candidateValue);
-}
-
-function parseMuleSoftOverallRecommendationValue(candidateValue)
-{
-	match = /^([12345])([+-]?)$/.exec(candidateValue);
-	if (!match) return null;
-	var parsedValue = { numeric: match[1], modifier: match[2], value: match[1] + match[2] };
-	if ((parsedValue.numeric == '1') || (parsedValue.numeric == '5')) 
+	else
 	{
-		parsedValue.modifier = '';
+		contentsContainer.value = pluginPattern;
 	}
-	return parsedValue;
+	var topNotes = keyTakeawaysContainer.parentNode;
+	var newTopNote = document.createElement('div');
+	newTopNote.className = 'note-container';
+	topNotes.insertBefore(newTopNote, topNotes.firstChild);
+	var tipsContainer = keyTakeawaysContainer.getElementsByClassName('tips')[0];
+	newTopNote.appendChild(tipsContainer);
+	overrideClass('.notes .tips', 'position: relative');
+	var publicNotesLinkContainer = keyTakeawaysContainer.getElementsByClassName('new-note-links-container')[0];
+	newTopNote.appendChild(publicNotesLinkContainer);
+
+	keyTakeawaysContainer.style.display = 'none';
 }
 
-function setMuleSoftOverallRecommendationPersistentContainerValue(value)
+// Hide Download PDF:
+
+function hideDownloadPDF()
 {
-	var modifierPersistentContainer = document.getElementById(modifierPersistentContainerId);
-	modifierPersistentContainer.value = '::' + value + '::';
-}
-
-function replaceInputOverallRecommendation()
-{
-	// hide existing controls:
-	doOnSelector('.overall-recommendation [data-rating-id]', function (elt) { elt.style.display = 'none'; }); 
-	// add new controls:
-	appendFirstSelectorHTML('#candidate_rating_options', scorecardInputOverallRecomendationHTML); 
-	overrideClass('.overall-recommendation #candidate_rating_options li', 
-		'width: 8%');
-	overrideClass('.overall-recommendation #candidate_rating_options li.selected', 
-		'background-color: transparent !important; border: 1px solid #000000 !important; color: #000000 !important');
-	// if there is a valid saved value, select accordingly:
-	var savedNumericValue = mulesoftRatings[document.getElementById('scorecard_candidate_rating_id').value - 1];
-	if (savedNumericValue)
-	{
-		var savedValue = getMuleSoftOverallRecommendationValue();
-		var valueToUse = (savedValue && (savedValue.numeric == savedNumericValue)) ? savedValue : parseMuleSoftOverallRecommendationValue(savedNumericValue);
-		selectMulesoftRating(valueToUse);
-	}
-	// listen for clicks:
-	doOnSelector('[mulesoft-rating-id]', function (elt)
-	{
-		elt.addEventListener('click', onOverallRecommendationClick, false);
-	});
-	// add instructions
-	document.getElementById('candidate_rating_options').insertAdjacentHTML('afterend', scorecardExplainOverallRecommendationHTML);
-}
-
-function selectMulesoftRating(parsedValue)
-{
-	doOnSelector('[mulesoft-rating-id]', function (elt)
-	{
-		if (elt.getAttribute('mulesoft-rating-id') == parsedValue.value)
-		{
-			elt.className = elt.className.replace(/\s*(selected)?\s*$/, ' selected');
-		} 
-		else 
-		{
-			elt.className = elt.className.replace(/\s*selected\s*/, '');
-		}
-	});
-	document.getElementById('scorecard_candidate_rating_id').value = mulesoftRatings.indexOf(parsedValue.numeric) + 1;
-	setMuleSoftOverallRecommendationPersistentContainerValue(parsedValue.value);
-}
-
-function onOverallRecommendationClick(evt)
-{
-	var ratingValue = evt.srcElement.getAttribute('mulesoft-rating-id');
-	selectMulesoftRating(parseMuleSoftOverallRecommendationValue(ratingValue));
-}
-
-// End of Change overall rating 
-
-function lookupNotesTitle(text)
-{
-	var matches = /^\s*\d+/.exec(text);
-	var index = matches ? parseInt(matches[0]) : -1;
-	var newText = (index < 0) ? '' :
-		[ 'Accomplishments/Pros', 'Concerns/Gaps', 'OPTIONAL: Raw Interview Notes', 'Final Score Justification' ][index - 1];
-	return { index: index, newText: newText };
-}
-
-function redrawOnce()
-{
-	// Only when editing recognized-type scorecard:
-	if (hasSelector('.note-button') && hasSelector('#' + modifierPersistentContainerId)) 
-	{
-		// Find certain recognized notes fields:
-		var containerModifier, containerPros, containerCons, containerRaw, containerJustification;
-		doOnSelector('.notes .note-container', function (container)
-		{
-			var label = container.getElementsByClassName('scorecard-label')[0];
-			var notesContainerData = lookupNotesTitle(label.innerText);
-			switch (notesContainerData.index)
-			{
-				case -1:
-					if (container.querySelector('#' + modifierPersistentContainerId)) // is "key take-aways" node
-					{
-						containerModifier = container;
-					}
-					break;
-				case 1:
-					containerPros = container;
-					break;
-				case 2:
-					containerCons = container;
-					break;
-				case 3:
-					containerRaw = container;
-					break;
-				case 4:
-					containerJustification = container;
-					break;
-			}
-			if (notesContainerData.index > 0)
-			{
-				label.innerText = notesContainerData.newText;
-			}
-		});
-		// Move remaining decorators off key-takeaways notes before hiding it for use as modifier storage
-		var topNotes = containerModifier.parentNode;
-		var newTopNote = document.createElement('div');
-		newTopNote.className = 'note-container';
-		topNotes.insertBefore(newTopNote, topNotes.firstChild);
-		var tipsContainer = containerModifier.getElementsByClassName('tips')[0];
-		var firstNotesContainer = containerPros || containerCons || containerRaw || containerJustification || topNotes;
-		newTopNote.appendChild(tipsContainer);
-		overrideClass('.notes .tips', 'position: relative');
-		var publicNotesLinkContainer = containerModifier.getElementsByClassName('new-note-links-container')[0];
-		newTopNote.appendChild(publicNotesLinkContainer);
-		containerModifier.style.display = 'none';
-
-		if (/^Interview Kit\: Reference/.test(document.title) ||
-		    /^Interview Kit\: Backchannel/.test(document.title)) // not scorable
-		{
-			document.getElementById('attribute_prompt').style.display = 'none';
-			overrideClass('.scorecard-attributes-section', 'display: none');
-			overrideClass('.overall-recommendation', 'display: none');
-			var form = document.getElementById('scorecard_form');
-			var dividers = form.getElementsByTagName('hr');
-			if (dividers.length > 1) dividers[0].style.display = 'none'; // remove duplicate HRs
-		}
-		else
-		{
-			// Add scorecard criteria ratings column headers
-			appendFirstSelectorHTML('.scorecard-attributes-section > .title', scorecardColumnsHTML);
-			// Replace overall recommendation input fields
-			replaceInputOverallRecommendation();
-			// Move justification notes to bottom:
-			var overallRecommendationNode = document.querySelectorAll('.overall-recommendation')[0];
-			if (containerJustification) // found
-			{
-				var bottomNotes = document.createElement('div');
-				bottomNotes.className = 'notes';
-				bottomNotes.style.margin = '12px 0 0 25px';
-				insertAfter(bottomNotes, overallRecommendationNode);
-				bottomNotes.appendChild(containerJustification);
-				containerJustification.getElementsByClassName('scorecard-label')[0].style.padding = '0 0 0 1%';
-			}
-		}
-	}
-	else if (/\/scorecards\/\d+$/.test(document.location.pathname)) // Only when viewing recognized-type scorecard:
-	{
-		var reviewerNotes = document.querySelector('.notes');
-		var mulesoftOverallRating = convertScorecardHTML(reviewerNotes);
-		var ratingElt = document.querySelector('.rating-with-name.selected');
-		if (ratingElt)
-		{
-			var ratingValue = parseInt(ratingElt.getAttribute('data-rating-id'));
-			var mulesoftNumericRating = mulesoftRatings[ratingValue - 1];
-			if (mulesoftNumericRating)
-			{
-				ratingElt.innerText = (mulesoftOverallRating && (mulesoftOverallRating.numeric == mulesoftNumericRating)) ?
-					mulesoftOverallRating.value : mulesoftNumericRating; // Only change if they agree on the numerics
-			}
-		}
-	}
-
-	// Hide "Download PDF" link
 	doOnSelector('.section a', function (anchor)
 	{
 		if ((/download pdf/i).test(anchor.innerText))
@@ -259,8 +82,24 @@ function redrawOnce()
 			anchor.parentNode.style.display = 'none';
 		}
 	});
+	overrideClass('#export_pdf_button', 'display: none');
+}
 
-	// The rating images:
+// Change detailed ratings display:
+
+function appendTest(value)
+{
+	return (
+		(value == "Definitely Not") ||
+		(value == "No") ||
+		(value == "Mixed") ||
+		(value == "Yes") ||
+		(value == "Strong Yes")
+	);
+}
+
+function modifyDetailedRatingsDisplay()
+{
 	var unselected = 'opacity: 0.2 !important; font-weight: normal !important; background-image: none !important; text-align: center';
 	var selected   = 'opacity: 1.0 !important; font-weight: bold   !important; background-image: none !important; text-align: center';
 	overrideClass('.two-thumbs-down', unselected);
@@ -285,38 +124,179 @@ function redrawOnce()
 	// Overall no-decision should not show any distracting text:
 	overrideClass('.no-decision.rating-icon.rating-with-name.selected', 'visibility: hidden');
 
-	// No PDF export (but note this doesn't cover all cases):
-	overrideClass('#export_pdf_button', 'display: none');
-}
-
-function appendTest(value)
-{
-	return (
-		(value == "Definitely Not") ||
-		(value == "No") ||
-		(value == "Mixed") ||
-		(value == "Yes") ||
-		(value == "Strong Yes")
-	);
-}
-
-// Things that need redrawing potentially multiple times
-function redraw()
-{
 	// Scorecard criteria ratings picture-buttons
 	setSelectorAppendTitleHTML('.two-thumbs-down.rating-icon:not(.rating-with-name)', 'Weak', appendTest, 1);
 	setSelectorAppendTitleHTML('.thumbs-down.rating-icon:not(.rating-with-name)', 'Below average for MuleSoft', appendTest, 2);
 	setSelectorAppendTitleHTML('.mixed-rating.rating-icon:not(.rating-with-name)', 'Average for MuleSoft', appendTest, 3);
 	setSelectorAppendTitleHTML('.thumbs-up.rating-icon:not(.rating-with-name)', 'Above average for MuleSoft', appendTest, 4);
 	setSelectorAppendTitleHTML('.two-thumbs-up.rating-icon:not(.rating-with-name)', 'Exceptional for MuleSoft', appendTest, 5);
-	doOnClass('overall-recommendation', function (elt)
-	{
-		elt.childNodes[2].textContent = ''
-	});
-	adjustSummaries();
+
 }
 
-needSummaries = true;
+// Hide scoring:
+
+function hideScoring()
+{
+	document.getElementById('attribute_prompt').style.display = 'none';
+	overrideClass('.scorecard-attributes-section', 'display: none');
+	overrideClass('.overall-recommendation', 'display: none');
+	var form = document.getElementById('scorecard_form');
+	var dividers = form.getElementsByTagName('hr');
+	if (dividers.length > 1) dividers[0].style.display = 'none'; // remove duplicate HRs
+}
+
+// Change overall scoring display:
+
+function modifyOverallRatingSubmission()
+{
+	// Hide "Did the candidate pass the interview?":
+	var nodes = Array.from(document.getElementsByClassName('overall-recommendation')[0].childNodes);
+	nodes.forEach(function (node) { if (/candidate pass the interview/.test(node.textContent)) { node.textContent = ''; } });
+
+	// Change labels:
+	doOnSelector('.overall-recommendation [data-rating-id]', function (ratingElt) 
+	{ 
+		var ratingValue = parseInt(ratingElt.getAttribute('data-rating-id'));
+		ratingElt.innerText = mulesoftOverallRatings[ratingValue - 1];
+	}); 
+}
+
+function modifyOverallRatingViewing()
+{
+	if (!needOverallRating) return;
+	var overallRecommendationSections = Array.from(document.querySelectorAll('.scorecard-section.overall-recommendations #scorecards tr.recommendation'));
+	var overallQuestionAnswerSections = Array.from(document.querySelectorAll('.scorecard-section.overall-recommendations #scorecards tr.question-answers'));
+	if (overallRecommendationSections.length) needOverallRating = false; // No need to do this more than once
+	for (var iPair = 0; iPair < overallRecommendationSections.length; iPair++)
+	{
+		var recSection = overallRecommendationSections[iPair];
+		var qaSection  = overallQuestionAnswerSections[iPair];
+		var ratingElt = recSection.querySelector('.rating-with-name');
+		if (!ratingElt) continue;
+		var ratingValue = parseInt(ratingElt.getAttribute('data-rating-id'));
+		var mulesoftNumericRating = mulesoftOverallRatings[ratingValue - 1];
+		var usedPlugin = processQuestionAnswerSection(qaSection);
+		if (usedPlugin)
+		{
+			ratingElt.innerHTML = mulesoftNumericRating;
+		}
+		else
+		{
+			ratingElt.innerHTML += ' <super style="color: orange">*</super>';
+			warnNonPluginOverallScores();
+		}
+	}
+}
+
+// Look for <dt>...</dt><dd>...</dd> where the <dd>...</dd> part looks like the plugin pattern; if found, hide it and return true
+function processQuestionAnswerSection(qaSection)
+{
+	var elts = Array.from(qaSection.querySelectorAll('dt, dd'));
+	var found = false;
+	elts.forEach(function (elt, iElt)
+	{
+		if ((elt.tagName == 'DT') && (elt.innerText.startsWith(moveQuestionDownPattern)))
+		{
+			elt.innerText = elt.innerText.substr(moveQuestionDownPattern.length); // Remove pattern from questions text
+		}
+		if (elt.innerText.trim() == pluginPattern)
+		{
+			found = true;
+			elt.style.display = 'none';
+			if (elts[iElt - 1]) elts[iElt - 1].style.display = 'none'; // Hide the "Key Takeway" label too
+		}
+	});
+	return found;
+}
+
+function warnNonPluginOverallScores()
+{
+	var warningId = 'non_plugin_overall_scores_warning';
+	if (document.getElementById(warningId)) return; // warning already shown
+	var warningNote = document.createElement('div');
+	warningNote.style.paddingTop = '20px';
+	warningNote.id = warningId;
+	var scorecardsTable = document.getElementById('scorecards');
+	insertAfter(warningNote, scorecardsTable);
+	warningNote.innerHTML = '<super style="color: orange; font-weight: bold">*</super> This score was submitted without the MuleHouse Chrome plugin';
+}
+
+// Move some questions to the bottom:
+
+function moveQuestionsDown(containers)
+{
+	var overallRecommendationNode = document.querySelectorAll('.overall-recommendation')[0];
+	var bottomNotes = document.createElement('div');
+	bottomNotes.className = 'notes';
+	bottomNotes.style.margin = '12px 0 0 0px';
+	overallRecommendationNode.parentNode.insertBefore(bottomNotes, overallRecommendationNode);
+	containers.forEach(function (container)
+	{
+		bottomNotes.appendChild(container);
+	});
+}
+
+/////////////////////////
+// Put it all together //
+/////////////////////////
+
+
+// Things that only need redrawing once
+function redrawOnce()
+{
+	// Only when editing recognized-type scorecard:
+	if (hasSelector('.note-button') && hasSelector('#' + modifierPersistentContainerId)) 
+	{
+
+		var keyTakeawaysContainer;
+		var containersToMoveDown = [];
+		doOnSelector('.notes .note-container', function (container)
+		{
+			var label = container.getElementsByClassName('scorecard-label')[0];
+			var labelText = label.innerText;
+			if (container.querySelector('#' + modifierPersistentContainerId)) // is "key take-aways" node
+			{
+				keyTakeawaysContainer = container;
+			}
+			else if (labelText.startsWith(moveQuestionDownPattern))
+			{
+				label.innerText = labelText.substr(moveQuestionDownPattern.length).trim();
+				containersToMoveDown.push(container);
+			}
+		});
+		handleKeyTakeawaysCreation(keyTakeawaysContainer);
+		moveQuestionsDown(containersToMoveDown);
+
+		if (/^Interview Kit\: (Reference|Backchannel)/.test(document.title)) // not scorable
+		{
+			hideScoring();
+		}
+		else
+		{
+			addScorecardColumnLabels();
+			modifyOverallRatingSubmission();
+		}
+		
+	}
+
+	hideDownloadPDF();
+
+	modifyDetailedRatingsDisplay();
+}
+
+// Things that need redrawing potentially multiple times
+function redraw()
+{
+	modifyOverallRatingViewing();
+}
+
+
+///////////////////
+// Activate      //
+///////////////////
+
+needOverallRating = true;
+
 window.onload = function ()
 {
 	redrawOnce();
@@ -337,144 +317,6 @@ window.onload = function ()
 	}
 }
 
-function warnNonPluginOverallScores()
-{
-	var warningId = 'non_plugin_overall_scores_warning';
-	if (document.getElementById(warningId)) return; // warning already shown
-	var warningNote = document.createElement('div');
-	warningNote.id = warningId;
-	var scorecardsTable = document.getElementById('scorecards');
-	insertAfter(warningNote, scorecardsTable);
-	warningNote.innerHTML = '<super style="color: orange; font-weight: bold">*</super> This score was submitted without the MuleHouse Chrome plugin';
-}
-
-function warnPluginDiscrepancyOverallScores()
-{
-	var warningId = 'plugin_discrepancy_overall_scores_warning';
-	if (document.getElementById(warningId)) return; // warning already shown
-	var warningNote = document.createElement('div');
-	warningNote.id = warningId;
-	var scorecardsTable = document.getElementById('scorecards');
-	insertAfter(warningNote, scorecardsTable);
-	warningNote.innerHTML = '<super style="color: red; font-weight: bold">**</super> This score wasn\'t saved properly by the MuleHouse Chrome plugin. Please email this URL to Uri!';
-}
-
-function adjustSummaries()
-{
-	if (!needSummaries) return;
-	var overallRecommendationSections = Array.from(document.querySelectorAll('.scorecard-section.overall-recommendations #scorecards tr.recommendation'));
-	var overallQuestionAnswerSections = Array.from(document.querySelectorAll('.scorecard-section.overall-recommendations #scorecards tr.question-answers'));
-	if (overallRecommendationSections.length) needSummaries = false; // No need to do this more than once
-	for (var iPair = 0; iPair < overallRecommendationSections.length; iPair++)
-	{
-		var recSection = overallRecommendationSections[iPair];
-		var qaSection  = overallQuestionAnswerSections[iPair];
-		var ratingElt = recSection.querySelector('.rating-with-name');
-		if (!ratingElt) continue;
-		var mulesoftOverallRating = convertQuestionAnswerSection(qaSection);
-		var ratingValue = parseInt(ratingElt.getAttribute('data-rating-id'));
-		var mulesoftNumericRating = mulesoftRatings[ratingValue - 1];
-		if (mulesoftNumericRating)
-		{
-			if (mulesoftOverallRating)
-			{
-				if (mulesoftOverallRating.numeric == mulesoftNumericRating)
-				{
-					ratingElt.innerHTML = mulesoftOverallRating.value;
-				}
-				else
-				{
-					ratingElt.innerHTML = mulesoftNumericRating + ' <super style="color: red">**</super>';
-					warnPluginDiscrepancyOverallScores();
-				}
-			}
-			else
-			{
-				ratingElt.innerHTML = mulesoftNumericRating + ' <super style="color: orange">*</super>';
-				warnNonPluginOverallScores();
-			}
-		}
-	}
-}
-
-// Look for <dt>...</dt><dd>...</dd> where the <dd>...</dd> part looks like a MuleSoft overall rating value (e.g. ::4+::)
-function convertQuestionAnswerSection(qaSection)
-{
-	var elts = Array.from(qaSection.querySelectorAll('dt, dd'));
-	var mulesoftOverallRatingValue = null;
-	elts.every(function (elt, iElt)
-	{
-		mulesoftOverallRatingValue = getMuleSoftOverallRecommendationValue(elt.innerText);
-		if (!mulesoftOverallRatingValue) return true; // try again
-		elt.style.display = 'none';
-		if (elts[iElt - 1]) elts[iElt - 1].style.display = 'none'; // Hide the "Key Takeway" label too
-		return false;
-	});
-	return mulesoftOverallRatingValue; // Didn't find the parsed value from a MuleHouse-submitted scorecard
-}
-
-function convertScorecardHTML(notesContainer)
-{
-	// Get MuleSoft overall rating (digit and +/-) and remove its container:
-	var mulesoftOverallRatingContainer = notesContainer.getElementsByTagName('p')[0]; // Crazy, but that's where the key take-aways come back
-	var mulesoftOverallRatingValue = getMuleSoftOverallRecommendationValue(mulesoftOverallRatingContainer.innerText);
-	if (mulesoftOverallRatingValue) mulesoftOverallRatingContainer.style.display = 'none';
-	// Map proper notes section titles:
-	var reviewerNotesLabels = Array.from(notesContainer.querySelectorAll('strong'));
-	reviewerNotesLabels.forEach(function (label)
-	{
-		var notesContainerData = lookupNotesTitle(label.innerText);
-		if (notesContainerData.index > 0)
-		{
-			label.innerText = notesContainerData.newText;
-		}
-	});
-	return mulesoftOverallRatingValue;
-}
-
-function wrapScorecardHTML(container, reviewerName, doc, link, isLast)
-{
-	var reviewer = document.createElement('div');
-	reviewer.innerText = reviewerName;
-	reviewer.style = 'font-size: 14px; font-weight: bold; padding-bottom: 10px';
-	container.appendChild(document.createElement('hr'));
-	container.appendChild(reviewer);
-	var reviewerNotes = container.appendChild(doc.getElementsByClassName('notes')[0]);
-
-	var mulesoftOverallRating = convertScorecardHTML(reviewerNotes);
-
-	// Convert overall rating to MuleSoft rating, if available and consistent:
-	var ratingElt = link.closest('tr').querySelector('.rating span');
-	if (ratingElt)
-	{
-		var ratingValue = parseInt(ratingElt.getAttribute('data-rating-id'));
-		var mulesoftNumericRating = mulesoftRatings[ratingValue - 1];
-		if (mulesoftNumericRating)
-		{
-			if (mulesoftOverallRating)
-			{
-				if (mulesoftOverallRating.numeric == mulesoftNumericRating)
-				{
-					ratingElt.innerHTML = mulesoftOverallRating.value;
-				}
-				else
-				{
-					ratingElt.innerHTML = mulesoftNumericRating + ' <super style="color: red">**</super>';
-					warnPluginDiscrepancyOverallScores();
-				}
-			}
-			else
-			{
-				ratingElt.innerHTML = mulesoftNumericRating + ' <super style="color: orange">*</super>';
-				warnNonPluginOverallScores();
-			}
-		}
-	}
-	if (isLast)
-	{
-		container.appendChild(document.createElement('hr'));
-	}
-}
 
 //////////////////
 // HTML Helpers //
@@ -498,13 +340,6 @@ function hasSelector(selector)
 	return matches.length > 0;
 }
 
-function doOnClass(className, onClass)
-{
-	var matches = document.getElementsByClassName(className);
-	if (matches.length == 0) return;
-	onClass(matches[0]);	
-}
-
 function doOnSelector(selector, onSelector)
 {
 	var matches = document.querySelectorAll(selector);
@@ -517,35 +352,12 @@ function doOnFirstSelector(selector, onSelector)
 	if (matched) onSelector(matched);
 }
 
-function setClassHTML(className, value) 
-{ 
-	doOnClass(className, function (elt)
-	{
-		elt.innerHTML = value;
-	});
-}
-
-function setSelectorHTML(selector, value) 
-{ 
-	doOnSelector(selector, function (elt)
-	{
-		elt.innerHTML = value;
-	});
-}
 
 function appendFirstSelectorHTML(selector, value) 
 { 
 	doOnFirstSelector(selector, function (elt)
 	{
 		elt.innerHTML = elt.innerHTML + value;
-	});
-}
-
-function setSelectorTitle(selector, value) 
-{ 
-	doOnSelector(selector, function (elt)
-	{
-		elt.title = value;
 	});
 }
 
@@ -561,3 +373,4 @@ function setSelectorAppendTitleHTML(selector, titleValue, appendTest, htmlValue)
 		elt.innerHTML = htmlValue;
 	});
 }
+
