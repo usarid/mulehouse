@@ -98,7 +98,7 @@ function appendTest(value)
 	);
 }
 
-function modifyDetailedRatingsDisplay()
+function modifyDetailedRatingsDisplayOnce()
 {
 	var unselected = 'opacity: 0.2 !important; font-weight: normal !important; background-image: none !important; text-align: center';
 	var selected   = 'opacity: 1.0 !important; font-weight: bold   !important; background-image: none !important; text-align: center';
@@ -124,6 +124,10 @@ function modifyDetailedRatingsDisplay()
 	// Overall no-decision should not show any distracting text:
 	overrideClass('.no-decision.rating-icon.rating-with-name.selected', 'visibility: hidden');
 
+}
+
+function modifyDetailedRatingsDisplayRepeat()
+{
 	// Scorecard criteria ratings picture-buttons
 	setSelectorAppendTitleHTML('.two-thumbs-down.rating-icon:not(.rating-with-name)', 'Weak', appendTest, 1);
 	setSelectorAppendTitleHTML('.thumbs-down.rating-icon:not(.rating-with-name)', 'Below average for MuleSoft', appendTest, 2);
@@ -281,13 +285,14 @@ function redrawOnce()
 
 	hideDownloadPDF();
 
-	modifyDetailedRatingsDisplay();
+	modifyDetailedRatingsDisplayOnce();
 }
 
 // Things that need redrawing potentially multiple times
 function redraw()
 {
 	modifyOverallRatingViewing();
+	modifyDetailedRatingsDisplayRepeat();
 }
 
 
@@ -371,6 +376,7 @@ function setSelectorAppendTitleHTML(selector, titleValue, appendTest, htmlValue)
 			elt.getAttribute('data-orig-title') + ": " + titleValue :
 			titleValue;
 		elt.innerHTML = htmlValue;
+		console.log(elt.innerHTML);
 	});
 }
 
