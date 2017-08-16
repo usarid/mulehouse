@@ -40,6 +40,15 @@ var scorecardColumnLabelsHTML = `
 </div>
 `;
 
+var prepopulatedAnswer =`
+RAW notes
+---------
+
+YOUR ANALYSIS OF THE ANSWER
+---------------------------
+
+`.replace(/^\s+/, '');
+
 function addScorecardColumnLabels()
 {
 	appendFirstSelectorHTML('.scorecard-attributes-section > .title', scorecardColumnLabelsHTML);
@@ -240,6 +249,26 @@ function moveQuestionsDown(containers)
 	});
 }
 
+// Prepopulate answers to some questions:
+
+function prepopulateAnswers(containers)
+{
+	containers.forEach(function (container)
+	{
+		var inputControl = container.querySelector('textarea');
+		if (!inputControl) return;
+		if (inputControl.value !== '') return; // Already populated so don't touch
+		inputControl.value = prepopulatedAnswer;
+		// Some uglyGreenhouse style hacking:
+		inputControl.rows = prepopulatedAnswer.match(/\n/g).length;
+		inputControl.style.height = '100%';
+		inputControl.style.position = 'relative';
+		var beautifier = container.querySelector('.textntags-beautifier');
+		if (beautifier) beautifier.style.display = 'none';
+	});
+	// TODO: A button to clear all the prepopulated ones ;-)
+}
+
 /////////////////////////
 // Put it all together //
 /////////////////////////
@@ -254,6 +283,7 @@ function redrawOnce()
 
 		var keyTakeawaysContainer;
 		var containersToMoveDown = [];
+		var containersToPrepopulate = [];
 		doOnSelector('.notes .note-container', function (container)
 		{
 			var label = container.getElementsByClassName('scorecard-label')[0];
@@ -267,9 +297,17 @@ function redrawOnce()
 				label.innerText = labelText.substr(moveQuestionDownPattern.length).trim();
 				containersToMoveDown.push(container);
 			}
+			else
+			{
+				if ((container.id == '') && container.querySelector('label[class="scorecard-label"')) // only ones with a label that has a class of scorecard-label and no other class
+				{
+					containersToPrepopulate.push(container);
+				}
+			}
 		});
 		handleKeyTakeawaysCreation(keyTakeawaysContainer);
 		moveQuestionsDown(containersToMoveDown);
+		prepopulateAnswers(containersToPrepopulate);
 
 		if (/^Interview Kit\: (Reference|Backchannel)/.test(document.title)) // not scorable
 		{
@@ -376,7 +414,6 @@ function setSelectorAppendTitleHTML(selector, titleValue, appendTest, htmlValue)
 			elt.getAttribute('data-orig-title') + ": " + titleValue :
 			titleValue;
 		elt.innerHTML = htmlValue;
-		console.log(elt.innerHTML);
 	});
 }
 
