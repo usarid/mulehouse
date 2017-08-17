@@ -41,10 +41,10 @@ var scorecardColumnLabelsHTML = `
 `;
 
 var prepopulatedAnswer =`
-RAW notes
+Raw notes
 ---------
 
-YOUR ANALYSIS OF THE ANSWER
+Your analysis of the answer
 ---------------------------
 
 `.replace(/^\s+/, '');
@@ -291,18 +291,19 @@ function redrawOnce()
 			if (container.querySelector('#' + modifierPersistentContainerId)) // is "key take-aways" node
 			{
 				keyTakeawaysContainer = container;
+				return;
 			}
-			else if (labelText.startsWith(moveQuestionDownPattern))
+			if (labelText.startsWith(moveQuestionDownPattern))
 			{
 				label.innerText = labelText.substr(moveQuestionDownPattern.length).trim();
 				containersToMoveDown.push(container);
 			}
-			else
+			// This was the logic if we wanted to prepopulate all "typical" questions prepopulated:
+			// if ((container.id == '') && container.querySelector('label[class="scorecard-label"')) // only ones with a label that has a class of scorecard-label and no other class
+			// This is the logic if  to prepopulate only questions starting with "Qn" where n is a number:
+			if (/^Q\d+\W/i.test(labelText))
 			{
-				if ((container.id == '') && container.querySelector('label[class="scorecard-label"')) // only ones with a label that has a class of scorecard-label and no other class
-				{
-					containersToPrepopulate.push(container);
-				}
+				containersToPrepopulate.push(container);
 			}
 		});
 		handleKeyTakeawaysCreation(keyTakeawaysContainer);
