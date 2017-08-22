@@ -41,11 +41,11 @@ var scorecardColumnLabelsHTML = `
 `;
 
 var prepopulatedAnswer =`
-Raw notes:
+Your analysis of the answer (required):
 
 
---------------------------------------
-Your analysis of the answer:
+---------------------------
+Raw notes (optional):
 
 
 `.replace(/^\s+/, '');
