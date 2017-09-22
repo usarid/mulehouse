@@ -40,15 +40,89 @@ var scorecardColumnLabelsHTML = `
 </div>
 `;
 
-var prepopulatedAnswer =`
+// Texts with which to prepopulate certain questions:
+
+var prepopulations = []; // Will be an array of pairs: a regexp, and a text to use if the regexp matches.
+
+prepopulations.push({regexp: /^Q\d+\W/i, text: `
 Your analysis of the answer (required):
 
 
 ---------------------------
 Raw notes (optional):
+`});
 
+prepopulations.push({regexp: /^API Design and Implementation\:/i, text: `
+1. What does the REST acronym stands for? How does REST compare to SOAP?
+2. What are some contract languages commonly used to describe RESTful APIs? Is there one you prefer? If so, why?
+3. Describe some approaches for managing concurrency in RESTful APIs. For instance, how should the API behave when simultaneous POST requests are submitted for the same resource at the same time?
+4. Describe 2 approaches to version an API. Which do you prefer and why?
 
-`.replace(/^\s+/, '');
+---------------------------
+Your analysis of the answer (required):
+
+`});
+
+prepopulations.push({regexp: /^Databases\:/i, text: `
+1. Describe the main differences between relational and NoSQL databases.
+2. What is a transaction in a database? How is a distributed transaction different from a local transaction?
+3. When would you use eventual consistency vs acid transactions?
+
+---------------------------
+Your analysis of the answer (required):
+
+`});
+
+prepopulations.push({regexp: /^General Developer Skills\:/i, text: `
+1. What is the difference between a strongly-typed and weakly-typed language?
+2. Can you provide some programing languages examples of each? How do you think about pros and cons of each of them?
+3. What is the difference between a compiled vs interpreted language? In which situations would you use one vs the other?
+4. Have you or do you contribute to any opensource software projects?  Are you working on any interesting projects in your spare time?
+
+---------------------------
+Your analysis of the answer (required):
+
+`});
+
+prepopulations.push({regexp: /^Messaging\:/i, text: `
+1. Describe how topics differ from queues in the JMS specification.
+2. What is AMQP? How is it different than JMS? What are some AMQP implementations?
+3. Describe when you would prefer messaging over an HTTP API in a distributed system.
+4. One way to coordinate the update of multiple systems of record is through orchestration.  What is a disadvantage of this approach and how can messaging help?
+
+---------------------------
+Your analysis of the answer (required):
+
+`});
+
+prepopulations.push({regexp: /^Operations\:/i, text: `
+1. I want to deploy an API in my datacenter, how do I ensure the API is horizontally scalable and highly available?
+2. I have an API that is querying a backend relational database and caching its state locally.  How can I scale this cache across multiple instances of my API?  How can I scale this cache across datacenters?
+3. Describe how you would monitor a RESTful API.
+4. What are the challenges for a larger organization to successfully adopt a CI/CD strategy? Please name one IaaS and PaaS framework and how it helps an organization achieve a CI/CD strategy.
+
+---------------------------
+Your analysis of the answer (required):
+
+`});
+
+prepopulations.push({regexp: /^Security\:/i, text: `
+1. What are the major security concerns for APIs?
+2. Within the middleware and integration space, at what level it is important to think about these security areas? Endpoints, APIs, Data, Network, Application
+3. What is a way to ensure the integrity and confidentiality of RESTful API traffic?
+4. How is authentication and authorization typically handed with RESTful APIs?
+
+---------------------------
+Your analysis of the answer (required):
+
+`});
+
+prepopulations.forEach(function (prepop)
+{
+	prepop.text = prepop.text.replace(/^\s+/, '');
+});
+
+// Scorecard column labels:
 
 function addScorecardColumnLabels()
 {
@@ -252,23 +326,44 @@ function moveQuestionsDown(containers)
 
 // Prepopulate answers to some questions:
 
-function prepopulateAnswers(containers)
+function prepopulateAnswer(container, text)
 {
-	containers.forEach(function (container)
-	{
-		var inputControl = container.querySelector('textarea');
-		if (!inputControl) return;
-		if (inputControl.value !== '') return; // Already populated so don't touch
-		inputControl.value = prepopulatedAnswer;
-		// Some uglyGreenhouse style hacking:
-		inputControl.rows = prepopulatedAnswer.match(/\n/g).length;
-		inputControl.style.height = '100%';
-		inputControl.style.position = 'relative';
-		var beautifier = container.querySelector('.textntags-beautifier');
-		if (beautifier) beautifier.style.display = 'none';
-	});
-	// TODO: A button to clear all the prepopulated ones ;-)
+	var inputControl = container.querySelector('textarea');
+	if (!inputControl) return;
+	if (inputControl.value !== '') return; // Already populated so don't touch
+	inputControl.value = text;
+	// Some uglyGreenhouse style hacking:
+	inputControl.style.height = (inputControl.scrollHeight) + 'px'; // See https://stackoverflow.com/questions/13085326/resize-text-area-to-fit-all-text-on-load-jquery
+	inputControl.style.position = 'relative';
+	var beautifier = container.querySelector('.textntags-beautifier');
+	if (beautifier) beautifier.style.display = 'none';
 }
+
+function prepopulateAnswers(containersAndTexts)
+{
+	containersAndTexts.forEach(function (containerAndText)
+	{
+		prepopulateAnswer(containerAndText.container, containerAndText.text);
+	});
+}
+
+// function prepopulateAnswers(containers)
+// {
+// 	containers.forEach(function (container)
+// 	{
+// 		var inputControl = container.querySelector('textarea');
+// 		if (!inputControl) return;
+// 		if (inputControl.value !== '') return; // Already populated so don't touch
+// 		inputControl.value = prepopulatedAnswer;
+// 		// Some uglyGreenhouse style hacking:
+// 		inputControl.rows = prepopulatedAnswer.match(/\n/g).length;
+// 		inputControl.style.height = '100%';
+// 		inputControl.style.position = 'relative';
+// 		var beautifier = container.querySelector('.textntags-beautifier');
+// 		if (beautifier) beautifier.style.display = 'none';
+// 	});
+// 	// TODO: A button to clear all the prepopulated ones ;-)
+// }
 
 /////////////////////////
 // Put it all together //
@@ -299,13 +394,18 @@ function redrawOnce()
 				label.innerText = labelText.substr(moveQuestionDownPattern.length).trim();
 				containersToMoveDown.push(container);
 			}
-			// This was the logic if we wanted to prepopulate all "typical" questions prepopulated:
-			// if ((container.id == '') && container.querySelector('label[class="scorecard-label"')) // only ones with a label that has a class of scorecard-label and no other class
-			// This is the logic if  to prepopulate only questions starting with "Qn" where n is a number:
-			if (/^Q\d+\W/i.test(labelText))
+			prepopulations.forEach(function (prepop)
 			{
-				containersToPrepopulate.push(container);
-			}
+				if (prepop.regexp.test(labelText))
+				{
+					containersToPrepopulate.push({container: container, text: prepop.text});
+					return false;
+				}
+			});
+			// if (/^Q\d+\W/i.test(labelText))
+			// {
+			// 	containersToPrepopulate.push(container);
+			// }
 		});
 		handleKeyTakeawaysCreation(keyTakeawaysContainer);
 		moveQuestionsDown(containersToMoveDown);
