@@ -333,6 +333,7 @@ function prepopulateAnswer(container, text)
 	if (inputControl.value !== '') return; // Already populated so don't touch
 	inputControl.value = text;
 	// Some uglyGreenhouse style hacking:
+	inputControl.style.height = '1px'; // See e.g. https://stackoverflow.com/questions/995168/textarea-to-resize-based-on-content-length
 	inputControl.style.height = (inputControl.scrollHeight) + 'px'; // See https://stackoverflow.com/questions/13085326/resize-text-area-to-fit-all-text-on-load-jquery
 	inputControl.style.position = 'relative';
 	var beautifier = container.querySelector('.textntags-beautifier');
