@@ -332,9 +332,6 @@ function prepopulateAnswer(container, text)
 	if (!inputControl) return;
 	if (inputControl.value !== '') return; // Already populated so don't touch
 	inputControl.value = text;
-	// Some uglyGreenhouse style hacking:
-	inputControl.style.height = '1px'; // See e.g. https://stackoverflow.com/questions/995168/textarea-to-resize-based-on-content-length
-	inputControl.style.height = (inputControl.scrollHeight) + 'px'; // See https://stackoverflow.com/questions/13085326/resize-text-area-to-fit-all-text-on-load-jquery
 	inputControl.style.position = 'relative';
 	var beautifier = container.querySelector('.textntags-beautifier');
 	if (beautifier) beautifier.style.display = 'none';
@@ -348,23 +345,11 @@ function prepopulateAnswers(containersAndTexts)
 	});
 }
 
-// function prepopulateAnswers(containers)
-// {
-// 	containers.forEach(function (container)
-// 	{
-// 		var inputControl = container.querySelector('textarea');
-// 		if (!inputControl) return;
-// 		if (inputControl.value !== '') return; // Already populated so don't touch
-// 		inputControl.value = prepopulatedAnswer;
-// 		// Some uglyGreenhouse style hacking:
-// 		inputControl.rows = prepopulatedAnswer.match(/\n/g).length;
-// 		inputControl.style.height = '100%';
-// 		inputControl.style.position = 'relative';
-// 		var beautifier = container.querySelector('.textntags-beautifier');
-// 		if (beautifier) beautifier.style.display = 'none';
-// 	});
-// 	// TODO: A button to clear all the prepopulated ones ;-)
-// }
+function fitTextarea(textarea)
+{
+	textarea.style.height = '1px'; // See e.g. https://stackoverflow.com/questions/995168/textarea-to-resize-based-on-content-length
+	textarea.style.height = (textarea.scrollHeight) + 'px'; // See https://stackoverflow.com/questions/13085326/resize-text-area-to-fit-all-text-on-load-jquery
+}
 
 /////////////////////////
 // Put it all together //
@@ -403,10 +388,6 @@ function redrawOnce()
 					return false;
 				}
 			});
-			// if (/^Q\d+\W/i.test(labelText))
-			// {
-			// 	containersToPrepopulate.push(container);
-			// }
 		});
 		handleKeyTakeawaysCreation(keyTakeawaysContainer);
 		moveQuestionsDown(containersToMoveDown);
@@ -434,6 +415,19 @@ function redraw()
 {
 	modifyOverallRatingViewing();
 	modifyDetailedRatingsDisplayRepeat();
+	// Only when editing recognized-type scorecard:
+	if (hasSelector('.note-button') && hasSelector('#' + modifierPersistentContainerId)) 
+	{
+		doOnSelector('.notes .note-container', function (container)
+		{
+			// Resize textareas to fit text
+			var inputControl = container.querySelector('textarea');
+			if (inputControl)
+			{
+				fitTextarea(inputControl);
+			}
+		});
+	}
 }
 
 
