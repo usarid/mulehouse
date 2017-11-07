@@ -4,7 +4,7 @@ To publish to **Chrome**:
 - Update the version in `manifest.json`
 - Compress the folder to create `mulehouse.zip`
 - Submit to https://chrome.google.com/webstore/developer/dashboard
-It will be available at https://chrome.google.com/webstore/detail/mulehouse-greenhouse-scor/jbjdbhbofcfmeenfjigdbbnklohgoiia
+- It will be available at https://chrome.google.com/webstore/detail/mulehouse-greenhouse-scor/jbjdbhbofcfmeenfjigdbbnklohgoiia
 
 To publish to **Firefox** (from Mac):
 - Update the version in `manifest.json`
