@@ -1,6 +1,5 @@
 // Constants:
 
-var extensionId = chrome.runtime.id;
 var modifierPersistentContainerId = 'scorecard_notes';
 var pluginPattern = '::Used with MuleHouse Chrome Plugin::';
 var moveQuestionDownPattern = '::v::';

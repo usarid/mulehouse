@@ -4,7 +4,7 @@
   "name": "Mulehouse - Greenhouse Scorecard Rewriter",
   "short_name": "Mulehouse",
   "description": "This extension will change many Greenhouse pages to better suit MuleSoft recruiting",
-  "version": "1.10.2",
+  "version": "1.10.3",
   "icons": 
   { 
     "16": "icon16.png",
@@ -18,10 +18,6 @@
       "js": ["rewrite.js"],
       "run_at": "document_start"
     }
-  ],
-  "web_accessible_resources": 
-  [
-    "images/*.png"
   ],
   "permissions": []
 }
